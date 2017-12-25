@@ -17,6 +17,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final String TAG = "MainActivity";
@@ -32,24 +36,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private MediaProjection mMediaProjection;
     private VirtualDisplay mVirtualDisplay;
     private MediaProjectionManager mMediaProjectionManager;
-    private Button btnStart, btnStop;
     private SurfaceView mSurfaceView;
+
+    private FFmpeg ffmpeg;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        ffmpeg = FFmpeg.getInstance(this);
+
         if (savedInstanceState != null) {
             mResultCode = savedInstanceState.getInt(STATE_RESULT_CODE);
             mResultData = savedInstanceState.getParcelable(STATE_RESULT_DATA);
         }
 
-
         mSurfaceView = findViewById(R.id.surface);
         mSurface = mSurfaceView.getHolder().getSurface();
-        btnStart = findViewById(R.id.btn_start);
-        btnStop = findViewById(R.id.btn_stop);
+        Button btnStart = findViewById(R.id.btn_start);
+        Button btnStop = findViewById(R.id.btn_stop);
         btnStart.setOnClickListener(this);
         btnStop.setOnClickListener(this);
 
@@ -60,11 +66,66 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 getSystemService(Context.MEDIA_PROJECTION_SERVICE);
     }
 
+    private void test() {
+        String[] cmd = new String[]{
+                "-re",
+                "-i",
+//                "/sdcard/DCIM/Camera/test.avi",
+                "/sdcard/66/seve.mp4",
+                "-vcodec",
+                "libx264",
+                "-acodec",
+                "aac",
+                "-f",
+                "flv",
+                "-strict",
+                "-2",
+                My.streamUrl
+        };
+
+        try {
+            ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler() {
+                @Override
+                public void onSuccess(String message) {
+                    super.onSuccess(message);
+                    Log.e(TAG, "onSuccess：" + message);
+                }
+
+                @Override
+                public void onProgress(String message) {
+                    super.onProgress(message);
+                    Log.e(TAG, "onProgress：" + message);
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    super.onFailure(message);
+                    Log.e(TAG, "onFailure：" + message);
+                }
+
+                @Override
+                public void onStart() {
+                    super.onStart();
+                    Log.e(TAG, "onStart");
+                }
+
+                @Override
+                public void onFinish() {
+                    super.onFinish();
+                    Log.e(TAG, "onFinish");
+                }
+            });
+        } catch (FFmpegCommandAlreadyRunningException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.btn_start:
-                startScreenCapture();
+                test();
+//                startScreenCapture();
                 break;
             case R.id.btn_stop:
                 stopScreenCapture();
@@ -77,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onPause() {
         super.onPause();
-        //stopScreenCapture();
+        stopScreenCapture();
     }
 
     @Override
@@ -90,11 +151,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mMediaProjection = mMediaProjectionManager.getMediaProjection(mResultCode, mResultData);
     }
 
-    private void tearDownMediaProjection() {
-        if (mMediaProjection != null) {
-            mMediaProjection.stop();
-            mMediaProjection = null;
-        }
+    private void setUpVirtualDisplay() {
+        Log.i(TAG, "Setting up a VirtualDisplay: " +
+                mSurfaceView.getWidth() + "x" + mSurfaceView.getHeight() +
+                " (" + mScreenDensity + ")");
+        mVirtualDisplay = mMediaProjection.createVirtualDisplay(
+                "ScreenCapture",
+                mSurfaceView.getWidth(),
+                mSurfaceView.getHeight(),
+                mScreenDensity,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                mSurface, null, null);
     }
 
     private void startScreenCapture() {
@@ -115,22 +182,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void setUpVirtualDisplay() {
-        Log.i(TAG, "Setting up a VirtualDisplay: " +
-                mSurfaceView.getWidth() + "x" + mSurfaceView.getHeight() +
-                " (" + mScreenDensity + ")");
-        mVirtualDisplay = mMediaProjection.createVirtualDisplay("ScreenCapture",
-                mSurfaceView.getWidth(), mSurfaceView.getHeight(), mScreenDensity,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                mSurface, null, null);
-    }
-
     private void stopScreenCapture() {
         if (mVirtualDisplay == null) {
             return;
         }
         mVirtualDisplay.release();
         mVirtualDisplay = null;
+    }
+
+    private void tearDownMediaProjection() {
+        if (mMediaProjection != null) {
+            mMediaProjection.stop();
+            mMediaProjection = null;
+        }
     }
 
     @Override
