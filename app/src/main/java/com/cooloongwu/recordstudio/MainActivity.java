@@ -17,9 +17,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
-import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
-import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
+import nl.bravobit.ffmpeg.ExecuteBinaryResponseHandler;
+import nl.bravobit.ffmpeg.FFmpeg;
+import nl.bravobit.ffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -67,21 +67,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void test() {
+
         String[] cmd = new String[]{
                 "-re",
                 "-i",
-//                "/sdcard/DCIM/Camera/test.avi",
                 "/sdcard/66/seve.mp4",
-                "-vcodec",
-                "libx264",
-                "-acodec",
-                "aac",
+                "-c",
+                "copy",
                 "-f",
                 "flv",
-                "-strict",
-                "-2",
                 My.streamUrl
         };
+
+//        String[] cmd = new String[]{"-version"};
 
         try {
             ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler() {
@@ -117,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             });
         } catch (FFmpegCommandAlreadyRunningException e) {
             e.printStackTrace();
+            Log.e(TAG, "Exception" + e.toString());
         }
     }
 
@@ -149,6 +148,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void setUpMediaProjection() {
         mMediaProjection = mMediaProjectionManager.getMediaProjection(mResultCode, mResultData);
+        mMediaProjection.registerCallback(new MediaProjection.Callback() {
+        }, null);
     }
 
     private void setUpVirtualDisplay() {
